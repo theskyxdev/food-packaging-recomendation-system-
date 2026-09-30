@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  RESEARCHER
+  INDUSTRY
+  FARMER
+}
+
+enum Category {
+  FRESH
+  PROCESSED
+  FROZEN
+  BAKERY
+  DAIRY
+  MEAT
+  SEAFOOD
+  BEVERAGE
+  GRAINS
+  PULSES
+  OIL
+  VEGETABLES
+  FRUITS
+}
+
+enum StorageType {
+  AMBIENT
+  COLD
+  FROZEN
+}
+
+enum Transportation {
+  LOCAL
+  DOMESTIC
+  EXPORT
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  image         String?
+  role          UserRole  @default(FARMER)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  recommendations Recommendation[]
+  reports         Report[]
+  
+  @@map("users")
+}
+
+model FoodCommodity {
+  id              String        @id @default(cuid())
+  name            String        @unique
+  category        Category
+  moisturePercent Float?
+  oilPercent      Float?
+  proteinPercent  Float?
+  sugarPercent    Float?
+  waterActivity   Float?
+  pH              Float?
+  respirationRate Float?
+  density         Float?
+  description     String?
+  imageUrl        String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  recommendations Recommendation[]
+  
+  @@map("food_commodities")
+}
+
+model PackagingMaterial {
+  id                    String   @id @default(cuid())
+  name                  String   @unique
+  type                  String
+  oxygenTransmission    Float    // OTR
+  waterVaporTransmission Float   // WVTR
+  thickness             Float?   // microns
+  costPerKg             Float
+  recyclable            Boolean  @default(false)
+  biodegradable         Boolean  @default(false)
+  oilResistance         Boolean  @default(false)
+  uvBarrier             Boolean  @default(false)
+  mechanicalStrength    String   // HIGH, MEDIUM, LOW
+  heatSealable          Boolean  @default(true)
+  imageUrl              String?
+  description           String?
+  specifications        Json?
+  carbonFootprint       Float?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  recommendations Recommendation[]
+  layers          PackagingLayer[]
+  
+  @@map("packaging_materials")
+}
+
+model Recommendation {
+  id                    String            @id @default(cuid())
+  userId                String
+  commodityId           String
+  
+  // Input Parameters
+  storageType           StorageType
+  temperature           Float
+  humidity              Float
+  transportation        Transportation
+  distance              Float?
+  shelfLifeRequired     Int               // days
+  packagingQuantity     Float
+  
+  // Results
+  recommendedMaterialId String
+  confidenceScore       Float
+  predictedShelfLife    Int               // days
+  shelfLifeImprovement  Float             // percentage
+  estimatedCost         Float
+  ecoScore              Float
+  mapRecommendation     Boolean
+  aiExplanation         String?
+  warnings              String?
+  
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commodity             FoodCommodity     @relation(fields: [commodityId], references: [id])
+  recommendedMaterial   PackagingMaterial @relation(fields: [recommendedMaterialId], references: [id])
+  
+  layers                PackagingLayer[]
+  reports               Report[]
+  qrData                QRData?
+  
+  @@map("recommendations")
+}
+
+model PackagingLayer {
+  id            String            @id @default(cuid())
+  recommendationId String
+  materialId    String
+  layerNumber   Int
+  thickness     Float
+  purpose       String
+  
+  recommendation Recommendation    @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  material      PackagingMaterial @relation(fields: [materialId], references: [id])
+  
+  @@map("packaging_layers")
+}
+
+model Report {
+  id                String         @id @default(cuid())
+  userId            String
+  recommendationId  String
+  title             String
+  format            String         // PDF, EXCEL
+  fileUrl           String?
+  generatedAt       DateTime       @default(now())
+  
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendation    Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  
+  @@map("reports")
+}
+
+model QRData {
+  id                String         @id @default(cuid())
+  recommendationId  String         @unique
+  qrCode            String         // base64 image
+  batchNumber       String?
+  manufacturingDate DateTime?
+  expiryDate        DateTime?
+  supplier          String?
+  createdAt         DateTime       @default(now())
+  
+  recommendation    Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  
+  @@map("qr_data")
+}
+
+model Settings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  
+  @@map("settings")
+}
+
+model Analytics {
+  id              String   @id @default(cuid())
+  eventType       String
+  eventData       Json
+  timestamp       DateTime @default(now())
+  
+  @@map("analytics")
+}
