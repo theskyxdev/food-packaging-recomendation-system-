@@ -337,13 +337,9 @@ kill -9 <PID>    # Kill it
 
 ## License
 
-Proprietary — PackIQ © 2026
 
-## Support
 
-- 📧 Email: support@packiq.com
-- 🐛 Issues: GitHub Issues
-- 📚 Docs: https://docs.packiq.com
+
 
 ## Roadmap
 
